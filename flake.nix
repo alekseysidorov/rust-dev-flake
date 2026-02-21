@@ -1,5 +1,8 @@
 # Nix flake for context-logger development and CI
 #
+# All reusable infrastructure lives in ./dev-flake.
+# This file only contains project-specific configuration.
+#
 # Usage:
 #   nix flake check              - Run all checks (formatting, clippy, tests, docs)
 #   nix fmt                      - Format code
@@ -18,220 +21,20 @@
 #   nix develop                  - Enter development shell with stable Rust
 #   nix develop .#nightly        - Enter development shell with nightly Rust
 {
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
-    fenix.url = "github:nix-community/fenix/monthly";
-    crane.url = "github:ipetkov/crane";
-    treefmt-nix.url = "github:numtide/treefmt-nix";
-    flake-utils.url = "github:numtide/flake-utils";
-  };
+  inputs.dev-flake.url = "path:./dev-flake";
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      nixpkgs-unstable,
-      flake-utils,
-      fenix,
-      crane,
-      treefmt-nix,
-    }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        # Common nix packages
-        pkgs = nixpkgs.legacyPackages.${system};
-        pkgs-unstable = nixpkgs-unstable.legacyPackages.${system};
-        # Fenix Rust toolchains
-        fenixPackage = fenix.packages.${system};
+    { self, dev-flake }:
+    dev-flake.lib.mkRustProject {
+      inherit self;
 
-        # Minimum supported Rust version
-        msrv = {
-          name = "1.85.1";
-          sha256 = "sha256-Hn2uaQzRLidAWpfmRwSRdImifGUCAb9HeAqTYFXWeQk=";
-        };
+      msrv = {
+        name = "1.85.1";
+        sha256 = "sha256-Hn2uaQzRLidAWpfmRwSRdImifGUCAb9HeAqTYFXWeQk=";
+      };
 
-        rustToolchains = {
-          stable = fenixPackage.stable.completeToolchain;
-          msrv = (fenixPackage.fromToolchainName msrv).defaultToolchain;
-          nightly = fenixPackage.complete.withComponents [ "rustfmt" ];
-        };
-        # Crane library for building Rust packages
-        craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchains.msrv;
-
-        # Eval the treefmt configuration
-        treefmtConfig = {
-          projectRootFile = "flake.nix";
-
-          programs = {
-            nixfmt.enable = true;
-            rustfmt = {
-              enable = true;
-              package = rustToolchains.nightly;
-            };
-            beautysh.enable = true;
-            deno.enable = true;
-            taplo.enable = true;
-          };
-        };
-        treefmt = (treefmt-nix.lib.evalModule pkgs treefmtConfig).config.build;
-
-        # Common build inputs for all CI scripts
-        buildInputs = with pkgs; [
-          cargo-nextest
-          openssl
-          pkg-config
-        ];
-
-        # Source filtering for crane
-        src = craneLib.path ./.;
-
-        # Common arguments for all crane builds
-        commonArgs = {
-          inherit src;
-          strictDeps = true;
-          nativeBuildInputs = buildInputs;
-          cargoVendorDir = craneLib.vendorCargoDeps {
-            inherit src;
-          };
-        };
-
-        # Build dependencies only (for caching)
-        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-
-        # Helper function to create a check with common args
-        # Usage: mkCheck "nextest" "--workspace --all-targets --all-features"
-        mkCheck =
-          checkType: args:
-          let
-            checks = {
-              nextest = {
-                builder = craneLib.cargoNextest;
-                argsAttr = "cargoNextestExtraArgs";
-              };
-              clippy = {
-                builder = craneLib.cargoClippy;
-                argsAttr = "cargoClippyExtraArgs";
-              };
-              test = {
-                builder = craneLib.cargoTest;
-                argsAttr = "cargoTestExtraArgs";
-              };
-              doc = {
-                builder = craneLib.cargoDoc;
-                argsAttr = "cargoDocExtraArgs";
-              };
-            };
-            checkConfig = checks.${checkType};
-          in
-          checkConfig.builder (
-            commonArgs // { inherit cargoArtifacts; } // { ${checkConfig.argsAttr} = args; }
-          );
-
-        # Automatically generate convenience wrappers for all checks
-        mkCheckPackages =
-          checks:
-          pkgs.lib.mapAttrs' (name: value: {
-            name = "check-" + name;
-            value = value;
-          }) checks;
-
-        mkGitHooks =
-          hooks:
-          pkgs.writeShellApplication {
-            name = "install-git-hooks";
-            text = pkgs.lib.concatMapStrings (hookName: ''
-              echo "⚡️ Installing ${hookName} hook"
-              cat > "$PWD/.git/hooks/${hookName}" << 'EOF'
-              ${pkgs.runtimeShell}
-              set -euo pipefail
-              ${hooks.${hookName}}
-              EOF
-              chmod +x "$PWD/.git/hooks/${hookName}"
-            '') (pkgs.lib.attrNames hooks);
-          };
-
-        # Define checks that can be reused in packages
-        checks = {
-          formatting = treefmt.check self;
-
-          tests = mkCheck "nextest" "--workspace --all-targets --no-default-features";
-          tests-all-features = mkCheck "nextest" "--workspace --all-targets --all-features";
-          clippy = mkCheck "clippy" "--workspace --all --all-targets --all-features -- --deny warnings";
-          doc-tests = mkCheck "test" "--workspace --doc --all-features";
-          doc = mkCheck "doc" "--workspace --no-deps --all-features";
-        };
-      in
-      {
-        # for `nix fmt`
-        formatter = treefmt.wrapper;
-        # for `nix flake check`
-        inherit checks;
-
-        devShells = {
-          default = pkgs.mkShell {
-            nativeBuildInputs = buildInputs ++ [
-              rustToolchains.stable
-              treefmt.wrapper
-              pkgs.cargo-machete
-            ];
-            # Nightly compiler to run miri tests
-            nightly = pkgs.mkShell {
-              nativeBuildInputs = [ rustToolchains.nightly ];
-            };
-          };
-        };
-
-        packages = {
-          # Benchmarks package for local performance testing
-          benchmarks = pkgs.writeShellApplication {
-            name = "run-benchmarks";
-            runtimeInputs = [ rustToolchains.stable ] ++ buildInputs;
-            text = ''
-              cargo bench --workspace --all-features
-            '';
-          };
-
-          # Semver compatibility checks (requires network access to crates.io)
-          check-semver = pkgs.writeShellApplication {
-            name = "run-semver-checks";
-            runtimeInputs = [
-              rustToolchains.stable
-              pkgs-unstable.cargo-semver-checks
-            ]
-            ++ buildInputs;
-            text = "cargo semver-checks";
-          };
-          # Cargo crate publishing compatibility checks
-          check-cargo-publish = pkgs.writeShellApplication {
-            name = "run-cargo-publish-checks";
-            runtimeInputs = [
-              rustToolchains.stable
-            ];
-            text = ''
-              cargo publish --workspace --all-features --dry-run
-            '';
-          };
-
-          # Convenience script to install git hooks
-          git-install-hooks = mkGitHooks {
-            "pre-commit" = ''
-              echo "⚡️ Running pre-commit checks..."
-              nix build .#check-formatting -L
-            '';
-            "pre-push" = ''
-              echo "⚡️ Running flake checks..."
-              nix flake check -L
-              echo "⚡️ Running semver checks..."
-              nix run .#check-semver -L
-              echo "⚡️ Running cargo publish compatibility checks..."
-              nix run .#check-cargo-publish -L
-            '';
-          };
-        }
-        # Convenience wrappers to run specific checks
-        // mkCheckPackages checks;
-      }
-    );
+      devShellInputs = pkgs: [
+        pkgs.cargo-machete
+      ];
+    };
 }
