@@ -79,6 +79,14 @@ let
       '') (pkgs.lib.attrNames hooks);
     };
 
+  # Automatically generate convenience wrappers for all checks
+  mkCheckPackages =
+    checks:
+    pkgs.lib.mapAttrs' (name: value: {
+      name = "check-" + name;
+      value = value;
+    }) checks;
+
   runtimeChecks = import ./runtimeChecks.nix {
     inherit pkgs pkgs-unstable runtimeInputs;
   };
@@ -88,6 +96,7 @@ in
     craneLib
     mkCargoCheck
     mkGitHooks
+    mkCheckPackages
     runtimeChecks
     ;
 }
