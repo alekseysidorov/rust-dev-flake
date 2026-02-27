@@ -1,6 +1,6 @@
+# Flake inputs
+{ inputs }:
 {
-  # Flake inputs
-  inputs,
   # The calling flake's `self`
   self,
   # Target system architecture
