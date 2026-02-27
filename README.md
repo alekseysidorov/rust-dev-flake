@@ -12,6 +12,7 @@ A reusable Nix flake for Rust project development that provides:
 - Cross-platform development support
 
 ## Table of Contents
+
 - [Installation](#installation)
 - [Usage](#usage)
 - [Features](#features)
@@ -52,11 +53,13 @@ In your project's `flake.nix`:
 ## Features
 
 ### Project Structure Automation
+
 - One-stop solution for Rust project setup
 - Standardized development environment across platforms
 - Built-in checks and validation
 
 ### Automatic Checks
+
 - Rust formatting with treefmt
 - Linting with clippy
 - Test execution (unit, integration, doc tests)
@@ -64,6 +67,7 @@ In your project's `flake.nix`:
 - Benchmark execution
 
 ### Development Tools
+
 - Dev shells with stable/nightly Rust
 - Cargo Nextest integration
 - Semantic version checks
@@ -73,19 +77,19 @@ In your project's `flake.nix`:
 
 ### Required Attributes
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
+| Attribute | Type | Description                                         |
+| --------- | ---- | --------------------------------------------------- |
 | `msrv`    | attr | Minimum supported Rust version with name and sha256 |
 
 ### Optional Attributes
 
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `treefmt` | set | Treefmt program configurations |
-| `buildInputs` | list | Additional build dependencies |
-| `devShellInputs` | list | Additional dev shell packages |
-| `extraPackages` | set | Additional runnable packages |
-| `extraRuntimeChecks` | set | Additional runtime checks |
+| Attribute            | Type | Description                    |
+| -------------------- | ---- | ------------------------------ |
+| `treefmt`            | set  | Treefmt program configurations |
+| `buildInputs`        | list | Additional build dependencies  |
+| `devShellInputs`     | list | Additional dev shell packages  |
+| `extraPackages`      | set  | Additional runnable packages   |
+| `extraRuntimeChecks` | set  | Additional runtime checks      |
 
 ### Example Configuration
 
@@ -108,36 +112,36 @@ dev-flake.lib.mkRustProject {
 
 ### General Project Management
 
-| Command | Description |
-|---------|-------------|
-| `nix flake check` | Run all project checks |
-| `nix fmt` | Format all project files |
+| Command           | Description              |
+| ----------------- | ------------------------ |
+| `nix flake check` | Run all project checks   |
+| `nix fmt`         | Format all project files |
 
 ### Project Checks
 
-| Command | Description |
-|---------|-------------|
-| `nix build .#check-clippy` | Run Rust clippy checks |
-| `nix build .#check-tests` | Run tests (no default features) |
-| `nix build .#check-tests-all` | Run tests with all features |
-| `nix build .#check-doc` | Build documentation |
-| `nix build .#check-doc-tests` | Run doc tests |
-| `nix build .#check-fmt` | Check formatting |
+| Command                       | Description                     |
+| ----------------------------- | ------------------------------- |
+| `nix build .#check-clippy`    | Run Rust clippy checks          |
+| `nix build .#check-tests`     | Run tests (no default features) |
+| `nix build .#check-tests-all` | Run tests with all features     |
+| `nix build .#check-doc`       | Build documentation             |
+| `nix build .#check-doc-tests` | Run doc tests                   |
+| `nix build .#check-fmt`       | Check formatting                |
 
 ### Runtime Operations
 
-| Command | Description |
-|---------|-------------|
-| `nix run .#benchmarks` | Run project benchmarks |
-| `nix run .#runtime-checks` | Run all runtime checks |
-| `nix run .#check-semver` | Check semantic version compatibility |
-| `nix run .#check-cargo-publish` | Dry-run cargo publish |
+| Command                         | Description                          |
+| ------------------------------- | ------------------------------------ |
+| `nix run .#benchmarks`          | Run project benchmarks               |
+| `nix run .#runtime-checks`      | Run all runtime checks               |
+| `nix run .#check-semver`        | Check semantic version compatibility |
+| `nix run .#check-cargo-publish` | Dry-run cargo publish                |
 
 ### Development Environments
 
-| Command | Description |
-|---------|-------------|
-| `nix develop` | Enter dev shell with stable Rust |
+| Command                 | Description                       |
+| ----------------------- | --------------------------------- |
+| `nix develop`           | Enter dev shell with stable Rust  |
 | `nix develop .#nightly` | Enter dev shell with nightly Rust |
 
 ## Git Hooks
@@ -149,9 +153,11 @@ nix run .#git-install-hooks
 ```
 
 This installs hooks that:
+
 - Format code on pre-commit
 - Run all project checks on pre-push
 
 ## License
 
-This project is licensed under MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under MIT License - see the [LICENSE](LICENSE) file for
+details.

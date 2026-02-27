@@ -7,7 +7,30 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = inputs: {
-    lib.rustDevFlake = import ./lib/default.nix { inherit inputs; };
-  };
+  outputs =
+    inputs:
+    {
+      lib.rustDevFlake = import ./lib/default.nix { inherit inputs; };
+    }
+    // inputs.flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        # Eval the treefmt configuration
+        pkgs = inputs.nixpkgs.legacyPackages.${system};
+        treefmtConfig = {
+          projectRootFile = "flake.nix";
+          programs = {
+            nixfmt.enable = true;
+            deno.enable = true;
+          };
+        };
+        treefmt = (inputs.treefmt-nix.lib.evalModule pkgs treefmtConfig).config.build;
+      in
+      {
+        formatter = treefmt.wrapper;
+        checks = {
+          formatter = treefmt.wrapper;
+        };
+      }
+    );
 }

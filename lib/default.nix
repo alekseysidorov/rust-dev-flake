@@ -14,17 +14,20 @@
   buildInputs ? [ ],
   # Native build dependencies for the project
   nativeBuildInputs ? [ ],
+  # Runtime dependencies for the project
+  runtimeInputs ? [ ],
 }:
 
 let
   pkgs = inputs.nixpkgs.legacyPackages.${system};
+  pkgs-unstable = inputs.nixpkgs.legacyPackages.${system};
   # Crane uses MSRV toolchain to verify minimum version compatibility
   craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
   # Use project source as-is without filtering
   src = root;
   # Common arguments for all crane builds
   commonArgs = {
-    inherit src nativeBuildInputs;
+    inherit src buildInputs nativeBuildInputs;
     strictDeps = true;
     cargoVendorDir = craneLib.vendorCargoDeps { inherit src; };
   };
@@ -59,7 +62,30 @@ let
     checkConfig.builder (
       commonArgs // { inherit cargoArtifacts; } // { ${checkConfig.argsAttr} = args; }
     );
+
+  # Helper: generate git hooks installer script
+  mkGitHooks =
+    hooks:
+    pkgs.writeShellApplication {
+      name = "install-git-hooks";
+      text = pkgs.lib.concatMapStrings (hookName: ''
+        echo "⚡️ Installing ${hookName} hook"
+        cat > "$PWD/.git/hooks/${hookName}" << 'EOF'
+        ${pkgs.runtimeShell}
+        set -euo pipefail
+        ${hooks.${hookName}}
+        EOF
+        chmod +x "$PWD/.git/hooks/${hookName}"
+      '') (pkgs.lib.attrNames hooks);
+    };
+
+  runtimeChecks = import ./runtimeChecks.nix { inherit pkgs pkgs-unstable runtimeInputs; };
 in
 {
-  inherit craneLib mkCargoCheck;
+  inherit
+    craneLib
+    mkCargoCheck
+    mkGitHooks
+    runtimeChecks
+    ;
 }
