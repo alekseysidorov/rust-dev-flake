@@ -8,17 +8,20 @@
   # Path to the project root (used for crane source filtering)
   # Defaults to `self`; pass `./.` explicitly if needed
   root ? self,
-  # Minimum supported Rust version
-  # Example: { name = "1.85.1"; sha256 = "sha256-..."; }
-  msrv,
+  # Rust toolchain to use for builds
+  toolchain,
+  # Build dependencies for the project
   buildInputs ? [ ],
+  # Native build dependencies for the project
   nativeBuildInputs ? [ ],
 }:
 
 let
   pkgs = inputs.nixpkgs.legacyPackages.${system};
   # Crane uses MSRV toolchain to verify minimum version compatibility
-  craneLib = (inputs.crane.mkLib pkgs).overrideToolchain msrv;
+  craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
+  # Fenix Rust toolchains
+  fenixPackage = inputs.fenix.packages.${system};
   # Use project source as-is without filtering
   src = root;
   # Common arguments for all crane builds
@@ -60,5 +63,5 @@ let
     );
 in
 {
-  inherit craneLib mkCargoCheck;
+  inherit craneLib mkCargoCheck fenixPackage;
 }
