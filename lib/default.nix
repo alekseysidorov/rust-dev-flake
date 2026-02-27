@@ -1,7 +1,7 @@
 # rust-dev-flake — library entry point
 #
 # Usage:
-#   rustDev = rust-dev-flake.lib.rustDevFlake {
+#   rustDev = rust-dev-flake.lib.mkRustDevHelpers {
 #     inherit system self;
 #     toolchain     = fenixPkgs.stable.completeToolchain;
 #     runtimeInputs = [ toolchain ];

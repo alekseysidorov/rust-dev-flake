@@ -47,7 +47,7 @@ reproducible tooling — both locally and in CI.
           nightly = fenixPkgs.complete.withComponents [ "rustfmt" ];
         };
 
-        rustDev = rust-dev-flake.lib.rustDevFlake {
+        rustDev = rust-dev-flake.lib.mkRustDevHelpers {
           inherit system self;
           toolchain     = rustToolchains.stable;
           runtimeInputs = [ rustToolchains.stable ];

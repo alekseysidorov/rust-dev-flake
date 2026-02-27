@@ -10,26 +10,35 @@
   outputs =
     inputs:
     {
-      lib.rustDevFlake = import ./lib/default.nix { inherit inputs; };
+      lib.mkRustDevHelpers = import ./lib/default.nix { inherit inputs; };
     }
     // inputs.flake-utils.lib.eachDefaultSystem (
       system:
       let
-        # Eval the treefmt configuration
         pkgs = inputs.nixpkgs.legacyPackages.${system};
-        treefmtConfig = {
+        # Eval the treefmt configuration
+        treefmt = (inputs.treefmt-nix.lib.evalModule pkgs) {
           projectRootFile = "flake.nix";
           programs = {
             nixfmt.enable = true;
             deno.enable = true;
           };
         };
-        treefmt = (inputs.treefmt-nix.lib.evalModule pkgs treefmtConfig).config.build;
+        # Use rust dev helpers for git hooks
+        rustDev = inputs.self.lib.mkRustDevHelpers {
+          inherit system;
+          self = inputs.self;
+          toolchain = pkgs.rustc;
+        };
       in
       {
-        formatter = treefmt.wrapper;
-        checks = {
-          formatter = treefmt.wrapper;
+        formatter = treefmt.config.build.wrapper;
+        checks.formatter = treefmt.config.build.wrapper;
+        packages.git-install-hooks = rustDev.mkGitHooks {
+          "pre-commit" = ''
+            echo "⚡️ Running pre-commit checks..."
+            nix flake check -L
+          '';
         };
       }
     );
