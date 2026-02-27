@@ -20,8 +20,6 @@ let
   pkgs = inputs.nixpkgs.legacyPackages.${system};
   # Crane uses MSRV toolchain to verify minimum version compatibility
   craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
-  # Fenix Rust toolchains
-  fenixPackage = inputs.fenix.packages.${system};
   # Use project source as-is without filtering
   src = root;
   # Common arguments for all crane builds
@@ -63,5 +61,5 @@ let
     );
 in
 {
-  inherit craneLib mkCargoCheck fenixPackage;
+  inherit craneLib mkCargoCheck;
 }
