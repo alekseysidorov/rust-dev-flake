@@ -4,7 +4,7 @@
   runtimeInputs,
 }:
 {
-  cargo-semver-checks = pkgs.writeShellApplication {
+  check-cargo-semver = pkgs.writeShellApplication {
     name = "run-semver-checks";
     runtimeInputs = [ pkgs-unstable.cargo-semver-checks ] ++ runtimeInputs;
     text = "cargo semver-checks";

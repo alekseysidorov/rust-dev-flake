@@ -79,7 +79,9 @@ let
       '') (pkgs.lib.attrNames hooks);
     };
 
-  runtimeChecks = import ./runtimeChecks.nix { inherit pkgs pkgs-unstable runtimeInputs; };
+  runtimeChecks = import ./runtimeChecks.nix {
+    inherit pkgs pkgs-unstable runtimeInputs;
+  };
 in
 {
   inherit
