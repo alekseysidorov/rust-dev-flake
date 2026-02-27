@@ -1,0 +1,42 @@
+name: "Tests"
+permissions:
+  contents: read
+  pull-requests: write
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  semver-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v16
+        with:
+          name: alekseysidorov-ci
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - name: "Run semver compatibility checks"
+        run: nix run .#check-semver
+      - name: "Run cargo publish compatibility checks"
+        run: nix run .#check-cargo-publish
+
+  tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v16
+        with:
+          name: alekseysidorov-ci
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+
+      - name: "Run tests"
+        run: nix flake check
