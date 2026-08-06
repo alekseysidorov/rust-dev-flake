@@ -38,6 +38,7 @@
 let
   pkgs = inputs.nixpkgs.legacyPackages.${system};
   pkgs-unstable = inputs.nixpkgs-unstable.legacyPackages.${system};
+  advisory-db = inputs.rust-advisory-db;
 
   # Crane instance with the caller-provided toolchain already wired in.
   # All mkCargoCheck derivations are built with this toolchain.
@@ -83,23 +84,36 @@ let
         nextest = {
           builder = craneLib.cargoNextest;
           argsAttr = "cargoNextestExtraArgs";
+          extraArgs = { };
         };
         clippy = {
           builder = craneLib.cargoClippy;
           argsAttr = "cargoClippyExtraArgs";
+          extraArgs = { };
         };
         test = {
           builder = craneLib.cargoTest;
           argsAttr = "cargoTestExtraArgs";
+          extraArgs = { };
         };
         doc = {
           builder = craneLib.cargoDoc;
           argsAttr = "cargoDocExtraArgs";
+          extraArgs = { };
+        };
+        audit = {
+          builder = craneLib.cargoAudit;
+          argsAttr = "cargoAuditExtraArgs";
+          extraArgs = {
+            inherit advisory-db;
+          };
         };
       };
       cfg = dispatchTable.${checkType};
     in
-    cfg.builder (commonArgs // { inherit cargoArtifacts; } // { ${cfg.argsAttr} = args; });
+    cfg.builder (
+      commonArgs // { inherit cargoArtifacts; } // { ${cfg.argsAttr} = args; } // cfg.extraArgs
+    );
 
   # mkCheckPackages checks
   #
@@ -151,7 +165,7 @@ let
     };
 
   runtimeChecks = import ./runtimeChecks.nix {
-    inherit pkgs pkgs-unstable runtimeInputs;
+    inherit pkgs runtimeInputs;
   };
 in
 {

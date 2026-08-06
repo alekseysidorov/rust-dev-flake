@@ -16,17 +16,14 @@
 #   };
 {
   pkgs,
-  pkgs-unstable,
   runtimeInputs,
 }:
 {
   # Runs `cargo semver-checks` to detect accidental breaking API changes.
-  # Uses cargo-semver-checks from nixpkgs-unstable because the stable channel
-  # typically lags behind the rapidly-evolving tool releases.
   # Run with: nix run .#check-cargo-semver
   check-cargo-semver = pkgs.writeShellApplication {
     name = "run-semver-checks";
-    runtimeInputs = [ pkgs-unstable.cargo-semver-checks ] ++ runtimeInputs;
+    runtimeInputs = [ pkgs.cargo-semver-checks ] ++ runtimeInputs;
     text = ''
       cargo semver-checks
     '';

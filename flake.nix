@@ -1,10 +1,14 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     crane.url = "github:ipetkov/crane";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-utils.url = "github:numtide/flake-utils";
+
+    rust-advisory-db = {
+      url = "github:rustsec/advisory-db";
+      flake = false;
+    };
   };
 
   outputs =
@@ -34,6 +38,7 @@
       {
         formatter = treefmt.config.build.wrapper;
         checks.formatter = treefmt.config.build.wrapper;
+
         packages.git-install-hooks = rustDev.mkGitHooks {
           "pre-commit" = ''
             echo "⚡️ Running pre-commit checks..."
