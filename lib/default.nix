@@ -1,6 +1,8 @@
 { inputs }:
+let
+  rustDev = import ./rustDev { inherit inputs; };
+in
 {
-  gitHooks = import ../git-hooks.nix;
-  mkCraneLib = { pkgs, toolchain }: (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
-  mkRustDevHelpers = import ./mkRustDevHelpers.nix { inherit inputs; };
+  gitHooks = import ./git-hooks.nix;
+  inherit (rustDev) mkCraneLib mkRustDevHelpers;
 }

@@ -39,15 +39,15 @@
           checks.formatter = treefmt.config.build.check inputs.self;
 
           packages.git-install-hooks = gitHooks.mkGitHooks {
-            pre-commit = pkgs.writeShellScript "pre-push" ''
+            pre-commit = pkgs.writeShellScript "pre-commit" ''
               set -euo pipefail
-              echo "⚡️ Running pre-push checks..."
+              echo "⚡️ Running pre-commit checks..."
               nix build .#checks.${system}.formatter -L
             '';
 
-            pre-push = pkgs.writeShellScript "pre-commit" ''
+            pre-push = pkgs.writeShellScript "pre-push" ''
               set -euo pipefail
-              echo "⚡️ Running pre-commit checks..."
+              echo "⚡️ Running pre-push checks..."
               nix flake check -L
             '';
           };

@@ -3,8 +3,8 @@
 final: prev:
 let
   pkgs = final;
-  rustDev = import ./lib { inherit inputs; };
-  gitHooks = import ./git-hooks.nix;
+  rustDev = import ./lib/rustDev { inherit inputs; };
+  gitHooks = import ./lib/git-hooks.nix;
 in
 {
   rustDev = {
