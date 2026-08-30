@@ -14,7 +14,8 @@
   outputs =
     inputs:
     {
-      lib.mkRustDevHelpers = import ./lib/default.nix { inherit inputs; };
+      lib = import ./lib { inherit inputs; };
+      overlays.default = import ./overlay.nix { inherit inputs; };
     }
     // inputs.flake-utils.lib.eachDefaultSystem (
       system:
@@ -28,18 +29,12 @@
             deno.enable = true;
           };
         };
-        # Use rust dev helpers for git hooks
-        rustDev = inputs.self.lib.mkRustDevHelpers {
-          inherit system;
-          self = inputs.self;
-          toolchain = pkgs.rustc;
-        };
       in
       {
         formatter = treefmt.config.build.wrapper;
-        checks.formatter = treefmt.config.build.wrapper;
+        checks.formatter = treefmt.config.build.check inputs.self;
 
-        packages.git-install-hooks = rustDev.mkGitHooks {
+        packages.git-install-hooks = inputs.self.lib.gitHooks.mkGitHooks { inherit pkgs; } {
           "pre-commit" = ''
             echo "⚡️ Running pre-commit checks..."
             nix flake check -L
