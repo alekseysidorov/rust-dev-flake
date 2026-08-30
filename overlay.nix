@@ -11,7 +11,5 @@ in
     mkCraneLib = args: rustDev.mkCraneLib (args // { inherit pkgs; });
     mkRustDevHelpers = args: rustDev.mkRustDevHelpers (args // { inherit pkgs; });
   };
-  gitHooks = {
-    mkGitHooks = gitHooks.mkGitHooks { pkgs = final.buildPackages; };
-  };
+  gitHooks = gitHooks.mkLib final.buildPackages;
 }
