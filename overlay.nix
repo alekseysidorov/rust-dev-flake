@@ -39,54 +39,7 @@ in
       #!${final.nushell}/bin/nu
       ${text}
     '';
-  /*
-    Like writeShellApplication, but text is Nu code and runs without a Bash wrapper.
-    runtimeInputs prepend PATH; inheritPath keeps the caller's PATH by default.
-    runtimeEnv contains environment values, not secrets: they enter the Nix store.
-    Syntax is checked without executing the script; checkPhase can override this.
-  */
-  writeNuShellApplication =
-    {
-      name,
-      text,
-      runtimeInputs ? [ ],
-      runtimeEnv ? null,
-      inheritPath ? true,
-      meta ? { },
-      passthru ? { },
-      checkPhase ? null,
-      derivationArgs ? { },
-    }:
-    let
-      # Load data rather than interpolating environment values into executable Nu code.
-      environment = final.writeText "${name}-env.json" (
-        builtins.toJSON (final.lib.mapAttrs (_: value: toString value) runtimeEnv)
-      );
-    in
-    final.writeTextFile {
-      inherit name passthru derivationArgs;
-      meta = {
-        mainProgram = name;
-      }
-      // meta;
-      executable = true;
-      destination = "/bin/${name}";
-      text = ''
-        #!${final.nushell}/bin/nu --no-config-file
-        ${final.lib.optionalString (runtimeEnv != null) "load-env (open ${environment})"}
-        $env.PATH = ${
-          builtins.toJSON (map (pkg: "${final.lib.getBin pkg}/bin") runtimeInputs)
-        }${final.lib.optionalString inheritPath " ++ ($env.PATH? | default [])"}
-        ${text}
-      '';
-      checkPhase =
-        if checkPhase != null then
-          checkPhase
-        else
-          ''
-            target="$target" ${final.nushell}/bin/nu --no-config-file -c 'nu-check --debug $env.target | if not $in { exit 1 }'
-          '';
-    };
+  writeNuShellApplication = final.callPackage ./lib/write-nu-shell-application.nix { };
 
   # Extra packages
   diplomat-tool = final.callPackage ./pkgs/diplomat-tool.nix { };
