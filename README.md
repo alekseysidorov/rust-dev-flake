@@ -73,9 +73,9 @@ Inside `flake-parts.lib.mkFlake`:
     };
     packages.demo = pkgs.writeNuShellApplication {
       name = "demo";
-      script = ./tools/demo.nu;
+      text = builtins.readFile ./tools/demo.nu;
       runtimeInputs = [ pkgs.hello ];
-      env = { DEMO_VALUE = "0"; };
+      runtimeEnv = { DEMO_VALUE = "0"; };
     };
   };
 }
@@ -89,6 +89,13 @@ print $env.DEMO_VALUE
 ```
 
 Run it with `nix run .#demo`.
+
+Runs directly in Nu without user configuration or a Bash wrapper. Syntax is
+checked at build time. `inheritPath = false` restricts PATH to `runtimeInputs`.
+Like `writeShellApplication`, it accepts `meta`, `passthru`, `checkPhase` and
+`derivationArgs`. Use `text` instead of the old `script` argument and
+`runtimeEnv` instead of `env`. Never put secrets in `runtimeEnv`: it is stored
+in Nix.
 
 ## Packages
 

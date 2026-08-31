@@ -40,50 +40,53 @@ in
       ${text}
     '';
   /*
-    Creates a Nushell script application.
-
-    Similar to [writeShellScriptBin][1] but targets `.nu` scripts instead of shell scripts.
-    The script is loaded via `builtins.readFile`, so it must be passed as a path to the source file (not its content).
-
-    [1]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/manual.xml
-
-    # Arguments
-    - `name` — name of the application and executable; becomes `$out/bin/<name>`
-    - `script` — path to the `.nu` script file
-    - `runtimeInputs` — additional packages added to the beginning of `PATH`; defaults to `[ ]`
-    - `env` — Nix attribute set whose keys become exported environment variables (e.g. `{ VAR = "value"; }`)
-    - `meta` — arbitrary attribute set merged into the result (typically `{ description; mainProgram; })`
-
-    # Example
-    ```nix
-    writeNuShellApplication {
-      name = "demo";
-      script = ./tools/demo.nu;
-      runtimeInputs = [ pkgs.hello ];
-      env = { DEMO_VALUE = "0"; };
-    }
-    ```
+    Like writeShellApplication, but text is Nu code and runs without a Bash wrapper.
+    runtimeInputs prepend PATH; inheritPath keeps the caller's PATH by default.
+    runtimeEnv contains environment values, not secrets: they enter the Nix store.
+    Syntax is checked without executing the script; checkPhase can override this.
   */
   writeNuShellApplication =
     {
       name,
-      script,
+      text,
       runtimeInputs ? [ ],
-      env ? { },
+      runtimeEnv ? null,
+      inheritPath ? true,
       meta ? { },
+      passthru ? { },
+      checkPhase ? null,
+      derivationArgs ? { },
     }:
     let
-      runtimePath = final.lib.makeBinPath runtimeInputs;
-      nuScript = final.writeText "${name}.nu" (builtins.readFile script);
-      # Expose env vars as shell exports. Nu doesn't have a way to set env vars for scripts, so we have to do it ourselves.
-      envExports = map (key: "export ${key}=${env.${key}}") (builtins.attrNames env);
+      # Load data rather than interpolating environment values into executable Nu code.
+      environment = final.writeText "${name}-env.json" (
+        builtins.toJSON (final.lib.mapAttrs (_: value: toString value) runtimeEnv)
+      );
     in
-    final.writeShellScriptBin name ''
-      export PATH="${runtimePath}:$PATH"
-      ${builtins.concatStringsSep "\n" envExports}
-      exec "${final.nushell}/bin/nu" "${nuScript}" "$@"
-    ''
-    // meta;
+    final.writeTextFile {
+      inherit name passthru derivationArgs;
+      meta = {
+        mainProgram = name;
+      }
+      // meta;
+      executable = true;
+      destination = "/bin/${name}";
+      text = ''
+        #!${final.nushell}/bin/nu --no-config-file
+        ${final.lib.optionalString (runtimeEnv != null) "load-env (open ${environment})"}
+        $env.PATH = ${
+          builtins.toJSON (map (pkg: "${final.lib.getBin pkg}/bin") runtimeInputs)
+        }${final.lib.optionalString inheritPath " ++ ($env.PATH? | default [])"}
+        ${text}
+      '';
+      checkPhase =
+        if checkPhase != null then
+          checkPhase
+        else
+          ''
+            target="$target" ${final.nushell}/bin/nu --no-config-file -c 'nu-check --debug $env.target | if not $in { exit 1 }'
+          '';
+    };
 
   # Extra packages
   diplomat-tool = final.callPackage ./pkgs/diplomat-tool.nix { };
