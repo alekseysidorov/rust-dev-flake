@@ -18,8 +18,9 @@
   outputs =
     inputs:
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      imports = [ ./flake-modules/git-hooks.nix ];
+      # Declared systems that your flake supports. These will be enumerated in perSystem
       systems = inputs.nixpkgs.lib.systems.flakeExposed;
+      imports = [ ./flake-modules/git-hooks.nix ];
 
       # Let other flakes reuse helpers, packages and hook configuration independently.
       flake = {
