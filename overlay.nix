@@ -12,7 +12,6 @@ in
     mkRustDevHelpers = args: rustDev.mkRustDevHelpers (args // { inherit pkgs; });
   };
   gitHooks = gitHooks.mkLib final.buildPackages;
-
   /*
     Creates a Nushell script application.
 
@@ -59,4 +58,7 @@ in
       exec "${final.nushell}/bin/nu" "${nuScript}" "$@"
     ''
     // meta;
+
+  # Extra packages
+  diplomat-tool = final.callPackage ./pkgs/diplomat-tool.nix { };
 }
