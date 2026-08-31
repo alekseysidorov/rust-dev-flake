@@ -18,19 +18,19 @@ in
   /*
     Apply the root .gitignore before selecting a subdirectory.
     projectRoot: project directory containing .gitignore; nested files are not read.
-    sourceDir: directory relative to projectRoot, or "" (default) for the whole filtered project.
+    sourceDir: directory relative to projectRoot, or "." (default) for the whole filtered project.
 
     Example: projectSource { projectRoot = ./.; sourceDir = "crates"; }
   */
   projectSource =
     {
       projectRoot,
-      sourceDir ? "",
+      sourceDir ? ".",
     }:
     let
       source = final.nix-gitignore.gitignoreSource [ ] projectRoot;
     in
-    if sourceDir == "" then source else "${source}/${sourceDir}";
+    if sourceDir == "." then source else "${source}/${sourceDir}";
 
   # name: store filename; text: Nu code without a shebang. Returns an executable file for hooks.
   writeNuShellScript =

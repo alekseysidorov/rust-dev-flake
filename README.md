@@ -20,7 +20,7 @@ src = pkgs.projectSource {
 };
 ```
 
-`sourceDir` is relative to `projectRoot`. Omit it or use `""` to keep the whole
+`sourceDir` is relative to `projectRoot`. Omit it or use `"."` to keep the whole
 filtered root. Nested `.gitignore` files are not read.
 
 ## Git hooks
