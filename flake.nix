@@ -21,6 +21,7 @@
       imports = [ ./flake-modules/git-hooks.nix ];
       systems = inputs.nixpkgs.lib.systems.flakeExposed;
 
+      # Let other flakes reuse helpers, packages and hook configuration independently.
       flake = {
         lib = import ./lib { inherit inputs; };
         overlays.default = import ./overlay.nix { inherit inputs; };
@@ -35,7 +36,6 @@
           ...
         }:
         let
-          # Eval the treefmt configuration
           treefmt = (inputs.treefmt-nix.lib.evalModule pkgs) {
             projectRootFile = "flake.nix";
             programs = {
@@ -45,20 +45,27 @@
           };
         in
         {
+          # Use our overlay consistently in packages, checks and development tools.
           _module.args.pkgs = import inputs.nixpkgs {
             inherit system;
             overlays = [ inputs.self.overlays.default ];
           };
 
-          formatter = treefmt.config.build.wrapper;
-          checks = {
-            formatter = treefmt.config.build.check inputs.self;
-            diplomat-tool = config.packages.diplomat-tool;
-          };
+          # Expose tools through `nix build` and `nix run`.
           packages = {
             inherit (pkgs) diplomat-tool;
           };
 
+          # Apply repository formatting with `nix fmt`.
+          formatter = treefmt.config.build.wrapper;
+
+          # Verify formatting and package builds with `nix flake check`.
+          checks = {
+            formatter = treefmt.config.build.check inputs.self;
+            diplomat-tool = config.packages.diplomat-tool;
+          };
+
+          # Install explicitly with `nix run .#install-git-hooks`.
           gitHooks = {
             pre-commit = pkgs.writeShellScript "pre-commit" ''
               set -euo pipefail
