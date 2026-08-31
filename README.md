@@ -7,6 +7,22 @@
 A collection of Nix helpers to simplify Rust project maintenance and ensure
 reproducible tooling — both locally and in CI.
 
+## Source filtering
+
+The default overlay provides `gitignoreSource`. It applies the root `.gitignore`
+before selecting a relative subdirectory, preserving the meaning of its
+patterns:
+
+```nix
+src = pkgs.gitignoreSource {
+  projectRoot = ./.;
+  src = "crates";
+};
+```
+
+Omit `src` or use `""` to keep the whole filtered root. Nested `.gitignore`
+files are not read.
+
 ## Git hooks
 
 Inside `flake-parts.lib.mkFlake`:

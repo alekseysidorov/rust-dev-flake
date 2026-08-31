@@ -7,12 +7,32 @@ let
   gitHooks = import ./lib/git-hooks.nix;
 in
 {
+  # Preserve this package set's overlays and cross-compilation configuration.
   rustDev = {
     mkCraneLib = args: rustDev.mkCraneLib (args // { inherit pkgs; });
     mkRustDevHelpers = args: rustDev.mkRustDevHelpers (args // { inherit pkgs; });
   };
+  # Hook installers run on the build machine, not the cross-compilation target.
   gitHooks = gitHooks.mkLib final.buildPackages;
-  # Write an executable Nu script without a Bash wrapper.
+
+  /*
+    Apply the root .gitignore before selecting a subdirectory.
+    projectRoot: project directory containing .gitignore; nested files are not read.
+    src: relative subdirectory, or "" (default) for the whole filtered project.
+
+    Example: gitignoreSource { projectRoot = ./.; src = "crates"; }
+  */
+  gitignoreSource =
+    {
+      projectRoot,
+      src ? "",
+    }:
+    let
+      source = final.nix-gitignore.gitignoreSource [ ] projectRoot;
+    in
+    if src == "" then source else "${source}/${src}";
+
+  # name: store filename; text: Nu code without a shebang. Returns an executable file for hooks.
   writeNuShellScript =
     name: text:
     final.writeScript name ''
