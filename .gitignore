@@ -1,0 +1,17 @@
+# Ignore editor/backup artifacts
+*.orig
+
+# Nix build outputs and environment folders
+**/result
+**/.direnv/
+**/tmp
+
+# macOS system files
+*.DS_Store
+
+# Visual Studio Code workspace files (preserve explicit settings/tasks)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.code-workspace

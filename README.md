@@ -7,99 +7,80 @@
 A collection of Nix helpers to simplify Rust project maintenance and ensure
 reproducible tooling — both locally and in CI.
 
-## Example
+## Git hooks
+
+Inside `flake-parts.lib.mkFlake`:
 
 ```nix
-# Nix flake for my-crate development and CI
-#
-# nix flake check              — run all checks (formatting, clippy, tests, docs)
-# nix fmt                      — format all files
-#
-# nix build .#check-clippy     — run only clippy
-# nix build .#check-tests      — run only tests (no default features)
-# nix build .#check-tests-all  — run tests with all features
-# nix build .#check-doc        — check documentation builds
-# nix build .#check-doc-tests  — run doc tests
-# nix build .#check-formatting — check formatting
-#
-# nix run .#benchmarks         — run benchmarks
-# nix run .#check-cargo-semver — semver compatibility check (requires network)
-# nix run .#git-install-hooks  — install git hooks
-#
-# nix develop                  — dev shell with stable Rust
 {
-  inputs = {
-    nixpkgs.url        = "github:NixOS/nixpkgs/nixos-25.11";
-    fenix.url          = "github:nix-community/fenix/monthly";
-    treefmt-nix.url    = "github:numtide/treefmt-nix";
-    flake-utils.url    = "github:numtide/flake-utils";
-    rust-dev-flake.url = "github:wildboarder/rust-dev-flake";
+  imports = [ inputs.rust-dev-flake.flakeModules.gitHooks ];
+
+  perSystem = { pkgs, system, ... }: {
+    gitHooks = {
+      pre-commit = pkgs.writeShellScript "pre-commit" ''
+        exec nix build .#checks.${system}.formatter -L
+      '';
+      pre-push = pkgs.writeShellScript "pre-push" ''
+        exec nix flake check -L
+      '';
+    };
   };
-
-  outputs = { self, nixpkgs, flake-utils, fenix, treefmt-nix, rust-dev-flake }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs      = nixpkgs.legacyPackages.${system};
-        fenixPkgs = fenix.packages.${system};
-
-        rustToolchains = {
-          stable  = fenixPkgs.stable.completeToolchain;
-          nightly = fenixPkgs.complete.withComponents [ "rustfmt" ];
-        };
-
-        rustDev = rust-dev-flake.lib.mkRustDevHelpers {
-          inherit system self;
-          toolchain     = rustToolchains.stable;
-          runtimeInputs = [ rustToolchains.stable ];
-        };
-
-        # treefmt-nix lets you mix formatters freely — including overriding
-        # the rustfmt package to nightly so you can use unstable format options.
-        treefmt = (treefmt-nix.lib.evalModule pkgs {
-          projectRootFile = "flake.nix";
-          programs = {
-            nixfmt.enable = true;
-            rustfmt        = { enable = true; package = rustToolchains.nightly; }; # nightly rustfmt!
-            taplo.enable   = true;
-          };
-        }).config.build;
-
-        checks = {
-          formatting = treefmt.check self;
-          tests      = rustDev.mkCargoCheck "nextest" "--workspace --all-targets --no-default-features";
-          tests-all  = rustDev.mkCargoCheck "nextest" "--workspace --all-targets --all-features";
-          clippy     = rustDev.mkCargoCheck "clippy"  "--workspace --all-targets --all-features -- --deny warnings";
-          doc-tests  = rustDev.mkCargoCheck "test"    "--workspace --doc --all-features";
-          docs       = rustDev.mkCargoCheck "doc"     "--workspace --no-deps --all-features";
-        };
-      in
-      {
-        formatter = treefmt.wrapper;
-        inherit checks;
-
-        packages = (rustDev.mkCheckPackages checks) // {
-          inherit (rustDev.runtimeChecks)
-            check-cargo-semver
-            check-cargo-publish
-            benchmarks;
-
-          git-install-hooks = rustDev.mkGitHooks {
-            pre-commit = "nix build .#check-formatting -L";
-            pre-push   = ''
-              nix flake check -L
-              nix run .#check-cargo-semver -L
-              nix run .#check-cargo-publish -L
-            '';
-          };
-        };
-
-        devShells.default = pkgs.mkShell {
-          nativeBuildInputs = [ rustToolchains.stable treefmt.wrapper ];
-        };
-      }
-    );
 }
 ```
+
+Run `nix run .#install-git-hooks` to install the configured scripts. Hooks from
+different modules are merged by name. An empty map creates no installer;
+importing the module does not modify `.git`.
+
+## Nushell applications
+
+Inside `flake-parts.lib.mkFlake`:
+
+```nix
+{
+  perSystem = { pkgs, system, ... }: {
+    _module.args.pkgs = import inputs.nixpkgs {
+      inherit system;
+      overlays = [ inputs.rust-dev-flake.overlays.default ];
+    };
+    packages.demo = pkgs.writeNuApplication {
+      name = "demo";
+      script = ./tools/demo.nu;
+      runtimeInputs = [ pkgs.hello ];
+      env = { DEMO_VALUE = "0"; };
+    };
+  };
+}
+```
+
+Create `tools/demo.nu`:
+
+```nu
+print $env.DEMO_VALUE
+^hello
+```
+
+Run it with `nix run .#demo`.
+
+## Packages
+
+`diplomat-tool` is available through the default overlay and
+`nix run .#diplomat-tool`. `nix flake check` builds it on the current system.
+
+## Flake input layout
+
+Group inputs by their role in the consuming project, in this order:
+
+1. **Nix** — package sets and flake framework (`nixpkgs`, `flake-parts`).
+2. **System configuration** — OS and user modules (`nix-darwin`,
+   `home-manager`).
+3. **Build** — toolchains and builders (`fenix`, `crane`).
+4. **Development** — shared helpers, formatters and checks (`rust-dev-flake`,
+   `treefmt-nix`).
+
+Skip empty groups. Keep related inputs together and `follows` inside each input.
+Group by purpose, not ownership or URL type. In `imports`, keep external modules
+before local modules; preserve any order required by their behavior.
 
 ## License
 
