@@ -76,6 +76,9 @@ Inside `flake-parts.lib.mkFlake`:
       text = builtins.readFile ./tools/demo.nu;
       runtimeInputs = [ pkgs.hello ];
       runtimeEnv = { DEMO_VALUE = "0"; };
+      extraConfig = ''
+        $env.config.error_style = "plain"
+      '';
     };
   };
 }
@@ -92,7 +95,9 @@ Run it with `nix run .#demo`.
 
 Runs directly in Nu without user configuration or a Bash wrapper. Syntax is
 checked at build time. `inheritPath = false` restricts PATH to `runtimeInputs`.
-Like `writeShellApplication`, it accepts `meta`, `passthru`, `checkPhase` and
+`extraConfig` defaults to `""` and runs after environment and PATH setup, before
+`text`, so configuration can stay separate from the script file. Like
+`writeShellApplication`, it accepts `meta`, `passthru`, `checkPhase` and
 `derivationArgs`. Use `text` instead of the old `script` argument and
 `runtimeEnv` instead of `env`. Never put secrets in `runtimeEnv`: it is stored
 in Nix.

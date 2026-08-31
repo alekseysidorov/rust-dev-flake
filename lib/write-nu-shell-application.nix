@@ -9,6 +9,7 @@
   Like writeShellApplication, but text is Nu code and runs without a Bash wrapper.
   runtimeInputs prepend PATH; inheritPath keeps the caller's PATH by default.
   runtimeEnv contains environment values, not secrets: they enter the Nix store.
+  extraConfig runs after environment and PATH setup, before text.
   Syntax is checked without executing the script; checkPhase can override this.
 */
 {
@@ -17,6 +18,7 @@
   runtimeInputs ? [ ],
   runtimeEnv ? null,
   inheritPath ? true,
+  extraConfig ? "",
   meta ? { },
   passthru ? { },
   checkPhase ? null,
@@ -49,6 +51,7 @@ writeTextFile {
     #!${nu} --no-config-file
     ${loadEnvironment}
     $env.PATH = ${runtimePath}${inheritedPath}
+    ${extraConfig}
     ${text}
   '';
   checkPhase = if checkPhase == null then syntaxCheck else checkPhase;
