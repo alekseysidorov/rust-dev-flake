@@ -12,6 +12,13 @@ in
     mkRustDevHelpers = args: rustDev.mkRustDevHelpers (args // { inherit pkgs; });
   };
   gitHooks = gitHooks.mkLib final.buildPackages;
+  # Write an executable Nu script without a Bash wrapper.
+  writeNuShellScript =
+    name: text:
+    final.writeScript name ''
+      #!${final.nushell}/bin/nu
+      ${text}
+    '';
   /*
     Creates a Nushell script application.
 

@@ -68,15 +68,13 @@
 
           # Install explicitly with `nix run .#install-git-hooks`.
           gitHooks = {
-            pre-commit = pkgs.writeShellScript "pre-commit" ''
-              set -euo pipefail
-              echo "⚡️ Running pre-commit checks..."
+            pre-commit = pkgs.writeNuShellScript "pre-commit" ''
+              print "⚡️ Running pre-commit checks..."
               nix build .#checks.${system}.formatter -L
             '';
 
-            pre-push = pkgs.writeShellScript "pre-push" ''
-              set -euo pipefail
-              echo "⚡️ Running pre-push checks..."
+            pre-push = pkgs.writeNuShellScript "pre-push" ''
+              print "⚡️ Running pre-push checks..."
               nix flake check -L
             '';
           };

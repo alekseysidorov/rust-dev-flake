@@ -32,6 +32,18 @@ Run `nix run .#install-git-hooks` to install the configured scripts. Hooks from
 different modules are merged by name. An empty map creates no installer;
 importing the module does not modify `.git`.
 
+## Nushell scripts
+
+The default overlay provides `writeNuShellScript name text`, which returns an
+executable file with a Nushell shebang, suitable for Git hooks:
+
+```nix
+pkgs.writeNuShellScript "pre-push" ''
+  print "Checking..."
+  nix flake check -L
+''
+```
+
 ## Nushell applications
 
 Inside `flake-parts.lib.mkFlake`:
