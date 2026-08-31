@@ -9,19 +9,19 @@ reproducible tooling — both locally and in CI.
 
 ## Source filtering
 
-The default overlay provides `gitignoreSource`. It applies the root `.gitignore`
+The default overlay provides `projectSource`. It applies the root `.gitignore`
 before selecting a relative subdirectory, preserving the meaning of its
 patterns:
 
 ```nix
-src = pkgs.gitignoreSource {
+src = pkgs.projectSource {
   projectRoot = ./.;
-  src = "crates";
+  sourceDir = "crates";
 };
 ```
 
-Omit `src` or use `""` to keep the whole filtered root. Nested `.gitignore`
-files are not read.
+`sourceDir` is relative to `projectRoot`. Omit it or use `""` to keep the whole
+filtered root. Nested `.gitignore` files are not read.
 
 ## Git hooks
 

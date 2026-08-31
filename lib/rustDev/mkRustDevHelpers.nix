@@ -4,7 +4,7 @@
 
 { inputs }:
 {
-  # The calling flake's `self` (passed to treefmt.check and used as default root)
+  # The calling flake's source, used as the default projectRoot.
   self,
   # Legacy callers may pass system; pkgs preserves overlays and cross configuration.
   system ? pkgs.stdenv.buildPlatform.system,
@@ -16,7 +16,7 @@
   toolchain,
   # Path to the project root passed to crane as the source tree.
   # Defaults to the calling flake's source.
-  root ? self,
+  projectRoot ? self,
   # Build-time C/C++ libraries passed to every crane derivation via buildInputs
   buildInputs ? [ ],
   # Native build-time tools passed to every crane derivation via nativeBuildInputs
@@ -33,7 +33,7 @@ let
   # All mkCargoCheck derivations are built with this toolchain.
   craneLib = inputs.self.lib.mkCraneLib { inherit pkgs toolchain; };
 
-  src = root;
+  src = projectRoot;
 
   # Shared arguments forwarded to every crane derivation.
   # cargoVendorDir is computed once so the network fetch is not repeated.
