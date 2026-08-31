@@ -32,6 +32,36 @@ Run `nix run .#install-git-hooks` to install the configured scripts. Hooks from
 different modules are merged by name. An empty map creates no installer;
 importing the module does not modify `.git`.
 
+## Nushell applications
+
+Inside `flake-parts.lib.mkFlake`:
+
+```nix
+{
+  perSystem = { pkgs, system, ... }: {
+    _module.args.pkgs = import inputs.nixpkgs {
+      inherit system;
+      overlays = [ inputs.rust-dev-flake.overlays.default ];
+    };
+    packages.demo = pkgs.writeNuApplication {
+      name = "demo";
+      script = ./tools/demo.nu;
+      runtimeInputs = [ pkgs.hello ];
+      env = { DEMO_VALUE = "0"; };
+    };
+  };
+}
+```
+
+Create `tools/demo.nu`:
+
+```nu
+print $env.DEMO_VALUE
+^hello
+```
+
+Run it with `nix run .#demo`.
+
 ## Packages
 
 `diplomat-tool` is available through the default overlay and
