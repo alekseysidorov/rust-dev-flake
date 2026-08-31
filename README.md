@@ -55,7 +55,7 @@ Inside `flake-parts.lib.mkFlake`:
       inherit system;
       overlays = [ inputs.rust-dev-flake.overlays.default ];
     };
-    packages.demo = pkgs.writeNuApplication {
+    packages.demo = pkgs.writeNuShellApplication {
       name = "demo";
       script = ./tools/demo.nu;
       runtimeInputs = [ pkgs.hello ];

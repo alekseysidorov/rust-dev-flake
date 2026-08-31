@@ -36,7 +36,7 @@ in
 
     # Example
     ```nix
-    writeNuApplication {
+    writeNuShellApplication {
       name = "demo";
       script = ./tools/demo.nu;
       runtimeInputs = [ pkgs.hello ];
@@ -44,7 +44,7 @@ in
     }
     ```
   */
-  writeNuApplication =
+  writeNuShellApplication =
     {
       name,
       script,
