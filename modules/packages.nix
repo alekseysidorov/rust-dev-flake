@@ -43,11 +43,11 @@ in
       extendedPkgs = pkgs.extend packageOverlay;
 
       # Internal package-set capabilities for other modules and repository policy.
-      localPkgs = loadPackages extendedPkgs;
+      pkgsLocal = loadPackages extendedPkgs;
     in
     {
       config = {
-        _module.args.localPkgs = lib.mkDefault localPkgs;
+        _module.args.pkgsLocal = lib.mkDefault pkgsLocal;
       };
     }
   );

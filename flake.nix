@@ -51,7 +51,7 @@
 
         perSystem =
           {
-            localPkgs,
+            pkgsLocal,
             lib,
             ...
           }:
@@ -66,16 +66,16 @@
             };
 
             # Only concrete derivations belong in flake packages and automatic checks.
-            packages = lib.filterAttrs (_: value: lib.isDerivation value) localPkgs;
+            packages = lib.filterAttrs (_: value: lib.isDerivation value) pkgsLocal;
             checks = packages;
 
             gitHooks = {
-              pre-commit = localPkgs.writeNushellScript "pre-commit" ''
+              pre-commit = pkgsLocal.writeNushellScript "pre-commit" ''
                 print "⚡️ Running pre-commit checks..."
                 nix fmt -- --fail-on-change
               '';
 
-              pre-push = localPkgs.writeNushellScript "pre-push" ''
+              pre-push = pkgsLocal.writeNushellScript "pre-push" ''
                 print "⚡️ Running pre-push checks..."
                 nix flake check -L
               '';

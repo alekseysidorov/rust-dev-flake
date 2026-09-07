@@ -8,7 +8,7 @@
   options.perSystem = flake-parts-lib.mkPerSystemOption (
     {
       config,
-      localPkgs,
+      pkgsLocal,
       ...
     }:
 
@@ -22,7 +22,7 @@
       };
 
       config = lib.mkIf (config.gitHooks != { }) {
-        packages.install-git-hooks = localPkgs.mkGitHooks config.gitHooks;
+        packages.install-git-hooks = pkgsLocal.mkGitHooks config.gitHooks;
       };
     }
   );
