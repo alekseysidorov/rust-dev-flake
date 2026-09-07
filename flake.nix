@@ -20,42 +20,62 @@
 
   outputs =
     inputs:
-    inputs.flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = inputs.nixpkgs.lib.systems.flakeExposed;
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } (
+      {
+        flake-parts-lib,
+        ...
+      }:
 
-      imports = [
-        inputs.treefmt-nix.flakeModule
-        ./modules
-      ];
+      let
+        inherit (flake-parts-lib) importApply;
 
-      perSystem =
-        {
-          localPkgs,
-          ...
-        }:
-        {
-          # Repository-specific formatting policy.
-          treefmt = {
-            projectRootFile = "flake.nix";
+        # Capture nix-devtools' own inputs once, then reuse the exact same
+        # module both internally and as the public flakeModule.
+        flakeModule = importApply ./modules {
+          inherit (inputs)
+            crane
+            rust-overlay
+            rust-advisory-db
+            ;
+        };
+      in
+      {
+        systems = inputs.nixpkgs.lib.systems.flakeExposed;
 
-            programs = {
-              nixfmt.enable = true;
-              deno.enable = true;
+        imports = [
+          inputs.treefmt-nix.flakeModule
+          flakeModule
+        ];
+
+        flake.flakeModule = flakeModule;
+
+        perSystem =
+          {
+            localPkgs,
+            ...
+          }:
+          {
+            treefmt = {
+              projectRootFile = "flake.nix";
+
+              programs = {
+                nixfmt.enable = true;
+                deno.enable = true;
+              };
+            };
+
+            gitHooks = {
+              pre-commit = localPkgs.writeNushellScript "pre-commit" ''
+                print "⚡️ Running pre-commit checks..."
+                nix fmt -- --fail-on-change
+              '';
+
+              pre-push = localPkgs.writeNushellScript "pre-push" ''
+                print "⚡️ Running pre-push checks..."
+                nix flake check -L
+              '';
             };
           };
-
-          # Repository-specific hook policy uses internal package capabilities.
-          gitHooks = {
-            pre-commit = localPkgs.writeNushellScript "pre-commit" ''
-              print "⚡️ Running pre-commit checks..."
-              nix fmt -- --fail-on-change
-            '';
-
-            pre-push = localPkgs.writeNushellScript "pre-push" ''
-              print "⚡️ Running pre-push checks..."
-              nix flake check -L
-            '';
-          };
-        };
-    };
+      }
+    );
 }

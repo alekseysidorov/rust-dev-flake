@@ -1,8 +1,7 @@
-localInputs:
-
 {
   lib,
   flake-parts-lib,
+  localInputs,
   ...
 }:
 
@@ -27,9 +26,7 @@ let
 
   # Evaluate local packages against the final package-set fixed point.
   # This lets package definitions depend on sibling builders and preceding overlays.
-  localOverlay =
-    final: _prev:
-    loadPackages final;
+  localOverlay = final: _prev: loadPackages final;
 
   # Keep one canonical package universe for internal use and external consumers.
   packageOverlay = lib.composeManyExtensions [
@@ -43,16 +40,13 @@ in
 
     let
       # Extend the caller's package set locally so the module is self-contained.
-      extendedPkgs =
-        pkgs.extend packageOverlay;
+      extendedPkgs = pkgs.extend packageOverlay;
 
       # Internal package-set capabilities for other modules and repository policy.
-      localPkgs =
-        loadPackages extendedPkgs;
+      localPkgs = loadPackages extendedPkgs;
 
       # Only concrete derivations belong in flake packages and automatic checks.
-      packages =
-        lib.filterAttrs (_: value: lib.isDerivation value) localPkgs;
+      packages = lib.filterAttrs (_: value: lib.isDerivation value) localPkgs;
     in
     {
       config = {
@@ -65,6 +59,5 @@ in
   );
 
   # Provide a convenient fallback without overriding the consumer's own composition.
-  config.flake.overlays.default =
-    lib.mkDefault packageOverlay;
+  config.flake.overlays.default = lib.mkDefault packageOverlay;
 }
