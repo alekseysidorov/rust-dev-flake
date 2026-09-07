@@ -19,8 +19,9 @@
       systems = inputs.nixpkgs.lib.systems.flakeExposed;
 
       imports = [
-        ./modules
+        inputs.flake-parts.flakeModules.modules
         inputs.treefmt-nix.flakeModule
+        ./modules
       ];
 
       flake.lib = import ./lib { inherit inputs; };

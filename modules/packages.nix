@@ -1,11 +1,25 @@
-{ lib, flake-parts-lib, ... }:
+{
+  inputs,
+  lib,
+  flake-parts-lib,
+  ...
+}:
 
 let
   loadPackages =
     pkgs:
     lib.filesystem.packagesFromDirectoryRecursive {
       directory = ../pkgs;
-      callPackage = pkgs.callPackage;
+
+      callPackage = lib.callPackageWith (
+        pkgs
+        // {
+          inherit (inputs)
+            crane
+            rust-advisory-db
+            ;
+        }
+      );
     };
 in
 {
