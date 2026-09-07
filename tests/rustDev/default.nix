@@ -18,12 +18,13 @@
       rustDev = pkgs.mkRustDevHelpers {
         inherit pkgs;
         src = pkgs.projectSource {
-          projectRoot = ./.;
-          sourceDir = "fixtures";
+          projectRoot = ./../..;
+          sourceDir = "tests/rustDev/fixtures";
         };
       };
     in
     {
-      checks.test-rust-dev = rustDev.checks.nextest "--workspace";
+      checks.test-rust-dev-nextest = rustDev.checks.nextest "--workspace";
+      checks.test-rust-dev-audit = rustDev.checks.audit "";
     };
 }
