@@ -44,16 +44,10 @@ in
 
       # Internal package-set capabilities for other modules and repository policy.
       localPkgs = loadPackages extendedPkgs;
-
-      # Only concrete derivations belong in flake packages and automatic checks.
-      packages = lib.filterAttrs (_: value: lib.isDerivation value) localPkgs;
     in
     {
       config = {
-        _module.args.localPkgs = localPkgs;
-
-        inherit packages;
-        checks = packages;
+        _module.args.localPkgs = lib.mkDefault localPkgs;
       };
     }
   );
