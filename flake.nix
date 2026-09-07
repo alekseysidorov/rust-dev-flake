@@ -29,19 +29,10 @@
 
       perSystem =
         {
-          pkgs,
-          system,
+          localPkgs,
           ...
         }:
         {
-          _module.args.pkgs = import inputs.nixpkgs {
-            inherit system;
-
-            overlays = [
-              inputs.self.overlays.default
-            ];
-          };
-
           treefmt = {
             projectRootFile = "flake.nix";
 
@@ -52,12 +43,12 @@
           };
 
           gitHooks = {
-            pre-commit = pkgs.writeNushellScript "pre-commit" ''
+            pre-commit = localPkgs.writeNushellScript "pre-commit" ''
               print "⚡️ Running pre-commit checks..."
               nix fmt -- --fail-on-change
             '';
 
-            pre-push = pkgs.writeNushellScript "pre-push" ''
+            pre-push = localPkgs.writeNushellScript "pre-push" ''
               print "⚡️ Running pre-push checks..."
               nix flake check -L
             '';
