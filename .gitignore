@@ -15,3 +15,6 @@
 !.vscode/tasks.json
 !.vscode/launch.json
 *.code-workspace
+
+# Added by cargo
+/target
