@@ -58,7 +58,7 @@ in
 
   config = {
     # Consumers get rust-overlay and all local builders/packages through one overlay.
-    flake.overlays.default = packageOverlay;
+    flake.overlays.default = lib.mkDefault packageOverlay;
 
     # Export the package wiring as a self-contained reusable flake module.
     flake.modules.flake.packages = ./packages.nix;
