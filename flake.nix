@@ -24,8 +24,6 @@
         ./modules
       ];
 
-      flake.lib = import ./lib { inherit inputs; };
-
       perSystem =
         {
           pkgs,
