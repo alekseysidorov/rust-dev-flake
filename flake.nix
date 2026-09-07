@@ -20,13 +20,13 @@
     inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       # Declared systems that your flake supports. These will be enumerated in perSystem
       systems = inputs.nixpkgs.lib.systems.flakeExposed;
-      imports = [ ./flake-modules/git-hooks.nix ];
+      imports = [ ./modules/gitHooks.nix ];
 
       # Let other flakes reuse helpers, packages and hook configuration independently.
       flake = {
         lib = import ./lib { inherit inputs; };
         overlays.default = import ./overlay.nix { inherit inputs; };
-        flakeModules.gitHooks = ./flake-modules/git-hooks.nix;
+        flakeModules.gitHooks = ./modules/gitHooks.nix;
       };
 
       perSystem =
