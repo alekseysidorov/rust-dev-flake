@@ -4,13 +4,16 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
 
     crane.url = "github:ipetkov/crane";
-
-    treefmt-nix.url = "github:numtide/treefmt-nix";
-
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     rust-advisory-db = {
       url = "github:rustsec/advisory-db";
       flake = false;
     };
+
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
   outputs =
