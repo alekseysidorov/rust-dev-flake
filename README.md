@@ -1,127 +1,296 @@
-# rust-dev-flake
+# nix-devtools
 
-[![Nix Flake](https://img.shields.io/badge/Nix-Flake-blue.svg)](https://nixos.org/nix/flakes)
-[![Rust](https://img.shields.io/badge/Rust-stable-orange.svg)](https://www.rust-lang.org)
-[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+Reusable Nix development tooling built around a small set of composable
+package-set capabilities and flake modules.
 
-A collection of Nix helpers to simplify Rust project maintenance and ensure
-reproducible tooling — both locally and in CI.
+The project follows a simple split:
 
-## Source filtering
+- `overlays.default` exposes package-set capabilities and tools.
+- `modules.flake.*` exposes reusable flake integration.
+- `flake.nix` contains this repository's own development policy.
 
-The default overlay provides `projectSource`. It applies the root `.gitignore`
-before selecting a relative subdirectory, preserving the meaning of its
-patterns:
+## Installation
+
+Add `nix-devtools` as a flake input:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+
+    nix-devtools = {
+      url = "github:alekseysidorov/rust-dev-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+}
+```
+
+## Overlay
+
+`overlays.default` is the main package-set API.
+
+```nix
+pkgs = import inputs.nixpkgs {
+  inherit system;
+
+  overlays = [
+    inputs.nix-devtools.overlays.default
+  ];
+};
+```
+
+It exposes development helpers and concrete packages directly through `pkgs`.
+
+Examples:
+
+```nix
+pkgs.mkRustDevHelpers
+pkgs.mkGitHooks
+pkgs.writeNushellApplication
+pkgs.writeNushellScript
+pkgs.projectSource
+
+pkgs.diplomat-tool
+pkgs.comchan
+```
+
+The default overlay also includes `rust-overlay`, so Rust toolchains are
+available through:
+
+```nix
+pkgs.rust-bin
+```
+
+## Rust development
+
+`mkRustDevHelpers` provides shared Crane configuration and reusable Rust checks.
+
+Minimal usage:
+
+```nix
+let
+  rustDev = pkgs.mkRustDevHelpers {
+    inherit pkgs;
+
+    src = pkgs.projectSource {
+      projectRoot = ./.;
+    };
+  };
+in
+{
+  checks = {
+    test = rustDev.checks.test "--workspace";
+    clippy = rustDev.checks.clippy "--workspace --all-targets";
+    doc = rustDev.checks.doc "--workspace";
+    audit = rustDev.checks.audit "";
+  };
+}
+```
+
+Without an explicit toolchain, Crane uses Rust from the supplied nixpkgs package
+set.
+
+### Custom Rust toolchain
+
+A custom toolchain may be supplied as either a derivation or a function from a
+package set to a derivation.
+
+For example, using `rust-overlay`:
+
+```nix
+let
+  rustDev = pkgs.mkRustDevHelpers {
+    inherit pkgs;
+
+    src = pkgs.projectSource {
+      projectRoot = ./.;
+    };
+
+    toolchain =
+      p:
+      p.rust-bin.stable."1.97.1".minimal;
+  };
+in
+{
+  checks.test =
+    rustDev.checks.test "--workspace";
+}
+```
+
+Available check builders:
+
+```nix
+rustDev.checks.nextest
+rustDev.checks.clippy
+rustDev.checks.test
+rustDev.checks.doc
+rustDev.checks.audit
+```
+
+Each builder accepts additional Cargo arguments:
+
+```nix
+rustDev.checks.nextest "--workspace --all-features"
+```
+
+The helpers share vendored dependencies and Crane build artifacts between checks
+where possible.
+
+## Project sources
+
+`projectSource` applies the project's `.gitignore` before optionally selecting a
+subdirectory.
 
 ```nix
 src = pkgs.projectSource {
   projectRoot = ./.;
-  sourceDir = "crates";
+  sourceDir = "crates/server";
 };
 ```
 
-`sourceDir` is relative to `projectRoot`. Omit it or use `"."` to keep the whole
-filtered root. Nested `.gitignore` files are not read.
-
-## Git hooks
-
-Inside `flake-parts.lib.mkFlake`:
+For the whole project:
 
 ```nix
-{
-  imports = [ inputs.rust-dev-flake.flakeModules.gitHooks ];
-
-  perSystem = { pkgs, system, ... }: {
-    gitHooks = {
-      pre-commit = pkgs.writeShellScript "pre-commit" ''
-        exec nix build .#checks.${system}.formatter -L
-      '';
-      pre-push = pkgs.writeShellScript "pre-push" ''
-        exec nix flake check -L
-      '';
-    };
-  };
-}
-```
-
-Run `nix run .#install-git-hooks` to install the configured scripts. Hooks from
-different modules are merged by name. An empty map creates no installer;
-importing the module does not modify `.git`.
-
-## Nushell scripts
-
-The default overlay provides `writeNuShellScript name text`, which returns an
-executable file with a Nushell shebang, suitable for Git hooks:
-
-```nix
-pkgs.writeNuShellScript "pre-push" ''
-  print "Checking..."
-  nix flake check -L
-''
+src = pkgs.projectSource {
+  projectRoot = ./.;
+};
 ```
 
 ## Nushell applications
 
-Inside `flake-parts.lib.mkFlake`:
+`writeNushellApplication` creates executable Nushell applications with managed
+runtime dependencies and environment variables.
 
 ```nix
-{
-  perSystem = { pkgs, system, ... }: {
-    _module.args.pkgs = import inputs.nixpkgs {
-      inherit system;
-      overlays = [ inputs.rust-dev-flake.overlays.default ];
-    };
-    packages.demo = pkgs.writeNuShellApplication {
-      name = "demo";
-      text = builtins.readFile ./tools/demo.nu;
-      runtimeInputs = [ pkgs.hello ];
-      runtimeEnv = { DEMO_VALUE = "0"; };
-      extraConfig = ''
-        $env.config.error_style = "plain"
-      '';
-    };
+pkgs.writeNushellApplication {
+  name = "hello";
+
+  runtimeInputs = [
+    pkgs.git
+  ];
+
+  runtimeEnv = {
+    MESSAGE = "hello";
   };
+
+  text = ''
+    print $env.MESSAGE
+    git --version
+  '';
 }
 ```
 
-Create `tools/demo.nu`:
+For small standalone scripts:
 
-```nu
-print $env.DEMO_VALUE
-^hello
+```nix
+pkgs.writeNushellScript "hello" ''
+  print "hello"
+''
 ```
 
-Run it with `nix run .#demo`.
+## Git hooks
 
-Runs directly in Nu without user configuration or a Bash wrapper. Syntax is
-checked at build time. `inheritPath = false` restricts PATH to `runtimeInputs`.
-`extraConfig` defaults to `""` and runs after environment and PATH setup, before
-`text`, so configuration can stay separate from the script file. Like
-`writeShellApplication`, it accepts `meta`, `passthru`, `checkPhase` and
-`derivationArgs`. Use `text` instead of the old `script` argument and
-`runtimeEnv` instead of `env`. Never put secrets in `runtimeEnv`: it is stored
-in Nix.
+The reusable Git hooks flake module turns named executable scripts into an
+installer package.
 
-## Packages
+Import the module:
 
-`diplomat-tool` is available through the default overlay and
-`nix run .#diplomat-tool`. `nix flake check` builds it on the current system.
+```nix
+{
+  imports = [
+    inputs.nix-devtools.modules.flake.gitHooks
+  ];
 
-## Flake input layout
+  perSystem =
+    { pkgs, ... }:
+    {
+      gitHooks = {
+        pre-commit =
+          pkgs.writeNushellScript "pre-commit" ''
+            nix fmt -- --fail-on-change
+          '';
 
-Group inputs by their role in the consuming project, in this order:
+        pre-push =
+          pkgs.writeNushellScript "pre-push" ''
+            nix flake check -L
+          '';
+      };
+    };
+}
+```
 
-1. **Nix** — package sets and flake framework (`nixpkgs`, `flake-parts`).
-2. **System configuration** — OS and user modules (`nix-darwin`,
-   `home-manager`).
-3. **Build** — toolchains and builders (`fenix`, `crane`).
-4. **Development** — shared helpers, formatters and checks (`rust-dev-flake`,
-   `treefmt-nix`).
+This exposes:
 
-Skip empty groups. Keep related inputs together and `follows` inside each input.
-Group by purpose, not ownership or URL type. In `imports`, keep external modules
-before local modules; preserve any order required by their behavior.
+```text
+packages.install-git-hooks
+```
 
-## License
+Install the configured hooks with:
 
-MIT — see [LICENSE](LICENSE).
+```bash
+nix run .#install-git-hooks
+```
+
+The hook values are executable files, not inline script bodies.
+
+## Reusable flake modules
+
+The project exposes reusable flake-parts modules through `modules.flake`.
+
+Currently available integrations include:
+
+```nix
+inputs.nix-devtools.modules.flake.packages
+inputs.nix-devtools.modules.flake.gitHooks
+```
+
+The modules are intended to be independently reusable. Importing a module should
+provide the capabilities required by that module without requiring consumers to
+know about internal wiring.
+
+## Development
+
+This repository uses its own tooling through the same public interfaces it
+exposes to consumers.
+
+Formatting:
+
+```bash
+nix fmt
+```
+
+Run all checks:
+
+```bash
+nix flake check -L
+```
+
+Install repository Git hooks:
+
+```bash
+nix run .#install-git-hooks
+```
+
+## Design
+
+The architecture intentionally keeps three concerns separate:
+
+```text
+overlay API
+    package-set capabilities
+
+flake modules
+    reusable integration mechanisms
+
+flake.nix
+    repository-specific development policy
+```
+
+Package definitions depend on explicit package-set capabilities rather than the
+flake `inputs` object wherever possible.
+
+Reusable helpers live in the package set when they require a `pkgs` universe.
+Pure Nix functions belong in `lib`.
+
+The goal is to keep the public surface small, composable, and unsurprising.
