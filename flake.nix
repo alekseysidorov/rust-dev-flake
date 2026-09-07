@@ -4,10 +4,12 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
 
     crane.url = "github:ipetkov/crane";
+
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
     rust-advisory-db = {
       url = "github:rustsec/advisory-db";
       flake = false;
@@ -22,7 +24,6 @@
       systems = inputs.nixpkgs.lib.systems.flakeExposed;
 
       imports = [
-        inputs.flake-parts.flakeModules.modules
         inputs.treefmt-nix.flakeModule
         ./modules
       ];
@@ -33,6 +34,7 @@
           ...
         }:
         {
+          # Repository-specific formatting policy.
           treefmt = {
             projectRootFile = "flake.nix";
 
@@ -42,6 +44,7 @@
             };
           };
 
+          # Repository-specific hook policy uses internal package capabilities.
           gitHooks = {
             pre-commit = localPkgs.writeNushellScript "pre-commit" ''
               print "⚡️ Running pre-commit checks..."

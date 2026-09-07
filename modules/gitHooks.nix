@@ -26,6 +26,4 @@
       };
     }
   );
-
-  config.flake.modules.flake.gitHooks = ./gitHooks.nix;
 }

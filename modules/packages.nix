@@ -1,13 +1,14 @@
+localInputs:
+
 {
-  inputs,
   lib,
   flake-parts-lib,
   ...
 }:
 
 let
-  # Build this repository's package-set extensions against an arbitrary nixpkgs instance.
-  # Flake inputs are injected explicitly so package definitions do not depend on `inputs`.
+  # Build local package-set extensions against an arbitrary nixpkgs instance.
+  # Provider-owned inputs are injected explicitly into package definitions.
   loadPackages =
     pkgs:
     lib.filesystem.packagesFromDirectoryRecursive {
@@ -16,7 +17,7 @@ let
       callPackage = lib.callPackageWith (
         pkgs
         // {
-          inherit (inputs)
+          inherit (localInputs)
             crane
             rust-advisory-db
             ;
@@ -24,13 +25,15 @@ let
       );
     };
 
-  # Local packages are evaluated against `final`, so package definitions can depend
-  # on sibling builders and on capabilities introduced by preceding overlays.
-  localOverlay = final: _prev: loadPackages final;
+  # Evaluate local packages against the final package-set fixed point.
+  # This lets package definitions depend on sibling builders and preceding overlays.
+  localOverlay =
+    final: _prev:
+    loadPackages final;
 
-  # Keep the internal package universe and the public overlay on exactly the same wiring.
+  # Keep one canonical package universe for internal use and external consumers.
   packageOverlay = lib.composeManyExtensions [
-    inputs.rust-overlay.overlays.default
+    localInputs.rust-overlay.overlays.default
     localOverlay
   ];
 in
@@ -39,28 +42,29 @@ in
     { pkgs, ... }:
 
     let
-      # Extend the caller's package set locally instead of requiring the consumer
-      # to install our public overlay before importing this module.
-      extendedPkgs = pkgs.extend packageOverlay;
+      # Extend the caller's package set locally so the module is self-contained.
+      extendedPkgs =
+        pkgs.extend packageOverlay;
 
-      localPkgs = loadPackages extendedPkgs;
+      # Internal package-set capabilities for other modules and repository policy.
+      localPkgs =
+        loadPackages extendedPkgs;
+
+      # Only concrete derivations belong in flake packages and automatic checks.
+      packages =
+        lib.filterAttrs (_: value: lib.isDerivation value) localPkgs;
     in
     {
-      config = rec {
+      config = {
         _module.args.localPkgs = localPkgs;
 
-        # Publish only concrete buildable values; package-set functions stay in the overlay.
-        packages = lib.filterAttrs (_: value: lib.isDerivation value) localPkgs;
+        inherit packages;
         checks = packages;
       };
     }
   );
 
-  config = {
-    # Consumers get rust-overlay and all local builders/packages through one overlay.
-    flake.overlays.default = lib.mkDefault packageOverlay;
-
-    # Export the package wiring as a self-contained reusable flake module.
-    flake.modules.flake.packages = ./packages.nix;
-  };
+  # Provide a convenient fallback without overriding the consumer's own composition.
+  config.flake.overlays.default =
+    lib.mkDefault packageOverlay;
 }
